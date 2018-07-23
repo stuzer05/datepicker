@@ -3,6 +3,7 @@ const babel = require('gulp-babel');
 const UglifyJS = require('uglify-js');
 const concat = require('gulp-concat-util');
 const less = require('gulp-less');
+const sass = require('gulp-sass');
 const prefix = require('gulp-autoprefixer');
 const fs = require('fs');
 
@@ -74,13 +75,21 @@ gulp.task('less', function() {
     .pipe(gulp.dest('./'));
 });
 
+gulp.task('sass', function () {
+  return gulp.src('scss/datepicker.scss')
+    .pipe(sass().on('error', sass.logError))
+    .pipe(prefix({browsers: ['last 2 versions']})) // browserslist: https://github.com/ai/browserslist
+    .pipe(gulp.dest('./'));
+});
+
 gulp.task('watch', function(done) {
   gulp.watch('./datepicker.js', gulp.series('es2015', 'uglify-js'));
   gulp.watch('./less/datepicker.less', gulp.series('less'));
+  gulp.watch('./scss/datepicker.scss', gulp.series('sass'));
   return done(); // Async completion.
 });
 
-gulp.task('default', gulp.series(/*'es2015', 'uglify-js', */'less', 'watch'));
+gulp.task('default', gulp.series(/*'es2015', 'uglify-js', */'less', 'sass', 'watch'));
 
 // http://goo.gl/SboRZI
 // Prevents gulp from crashing on errors.
