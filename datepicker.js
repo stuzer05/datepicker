@@ -58,6 +58,163 @@
   }
 
   /*
+   *  Creates a datepicker instance after sanitizing the options.
+   *  Calls `setCalendarInputValue` and conditionally `showCal`.
+   */
+  function createInstance(selector, options) {
+    const el = typeof selector === 'string' ? document.querySelector(selector) : selector;
+    options = sanitizeOptions(options || defaults(), el);
+
+    const { startDate, dateSelected, range } = options;
+    const noPosition = el === document.body;
+    const parent = noPosition ? document.body : el.parentElement;
+    const calendar = document.createElement('div');
+
+    calendar.className = 'qs-datepicker qs-hidden';
+    if (range) calendar.className += ' qs-range';
+
+    const instance = {
+      // The calendar will be positioned relative to this element (except when 'body').
+      el: el,
+
+      // The element that datepicker will be attached to.
+      parent: parent,
+
+      // Indicates whether to use an <input> element or not as the calendar's anchor.
+      nonInput: el.nodeName !== 'INPUT',
+
+      // Flag indicating if `el` is 'body' for `calculatePosition`.
+      noPosition: noPosition,
+
+      // Calendar position relative to `el`.
+      position: noPosition ? false : options.position,
+
+      // Date obj used to indicate what month to start the calendar on.
+      startDate: startDate,
+
+      // Starts the calendar with a date selected.
+      dateSelected: dateSelected,
+
+      // An array of dates to disable.
+      disabledDates: options.disabledDates,
+
+      // Low end of selectable dates.
+      minDate: options.minDate,
+
+      // High end of selectable dates.
+      maxDate: options.maxDate,
+
+      // Disabled the ability to select days on the weekend.
+      noWeekends: !!options.noWeekends,
+
+      // Indices for "Saturday" and "Sunday" repsectively.
+      weekendIndices: options.weekendIndices,
+
+      // The element our calendar is constructed in.
+      calendar: calendar,
+
+      // Month of `startDate` or `dateSelected` (as a number).
+      currentMonth: (startDate || dateSelected).getMonth(),
+
+      // Month name in plain english - or not.
+      currentMonthName: (options.months || months)[(startDate || dateSelected).getMonth()],
+
+      // Year of `startDate` or `dateSelected`.
+      currentYear: (startDate || dateSelected).getFullYear(),
+
+
+
+      // Method to programatically set the calendar's date.
+      setDate: setDate,
+
+      // Method to programatically reset the calendar.
+      reset: reset,
+
+      // Method that removes the calendar from the DOM along with associated events.
+      remove: remove,
+
+      // Method to programatically change the minimum selectable date.
+      setMin: setMin,
+
+      // Method to programatically change the maximum selectable date.
+      setMax: setMax,
+
+
+
+      // Callback fired when a date is selected - triggered in `selectDay`.
+      onSelect: options.onSelect,
+
+      // Callback fired when the calendar is shown - triggered in `showCal`.
+      onShow: options.onShow,
+
+      // Callback fired when the calendar is hidden - triggered in `hideCal`.
+      onHide: options.onHide,
+
+      // Callback fired when the month is changed - triggered in `changeMonthYear`.
+      onMonthChange: options.onMonthChange,
+
+      // Function to customize the date format updated on <input> elements - triggered in `setCalendarInputValue`.
+      formatter: options.formatter,
+
+
+
+      // Labels for months - custom or default.
+      months: options.months || months,
+
+      // Labels for days - custom or default.
+      days: options.customDays || days,
+
+      // Start day of the week - indexed from `days` above.
+      startDay: options.startDay,
+
+      // Custom overlay placeholder.
+      overlayPlaceholder: options.overlayPlaceholder || '4-digit year',
+
+      // Custom overlay submit button.
+      overlayButton: options.overlayButton || 'Submit',
+
+      // Disable the overlay for changing the year.
+      disableYearOverlay: options.disableYearOverlay,
+
+      // Disable the datepicker on mobile devices.
+      // Allows the use of native datepicker if the input type is 'date'.
+      disableMobile: options.disableMobile,
+
+      // Used in conjuntion with `disableMobile` above within `oneHandler`.
+      isMobile: 'ontouchstart' in window,
+
+      // Prevents the calendar from hiding.
+      alwaysShow: !!options.alwaysShow,
+
+      // Used to connect 2 datepickers together to form a daterange picker.
+      id: options.id,
+
+      // Creates a single instance that produces calendars side by side.
+      range: range
+    };
+
+    // Initially populate the <input> field / set attributes on the `el`.
+    if (dateSelected) setCalendarInputValue(el, instance);
+
+    // Keep track of all our instances in an array.
+    datepickers.push(instance);
+
+    // Add any needed styles to the parent element.
+    if (!noPosition && getComputedStyle(parent).position === 'static') {
+      instance.parentCssText = parent.style.cssText;
+      parent.style.cssText += 'position: relative;';
+    }
+
+    // Put our instance's calendar in the DOM.
+    parent.appendChild(calendar);
+
+    // Conditionally show the calendar.
+    instance.alwaysShow && showCal(instance);
+
+    return instance;
+  }
+
+  /*
    *  Will run checks on the provided options object to ensure correct types.
    *  Returns an options object if everything checks out.
    */
@@ -198,158 +355,6 @@
   }
 
   /*
-   *  Creates a datepicker instance after sanitizing the options.
-   *  Calls `setCalendarInputValue` and conditionally `showCal`.
-   */
-  function createInstance(selector, options) {
-    const el = typeof selector === 'string' ? document.querySelector(selector) : selector;
-    options = sanitizeOptions(options || defaults(), el);
-
-    const { startDate, dateSelected } = options;
-    const noPosition = el === document.body;
-    const parent = noPosition ? document.body : el.parentElement;
-    const calendar = document.createElement('div');
-    calendar.className = 'qs-datepicker qs-hidden';
-
-    const instance = {
-      // The calendar will be positioned relative to this element (except when 'body').
-      el: el,
-
-      // The element that datepicker will be attached to.
-      parent: parent,
-
-      // Indicates whether to use an <input> element or not as the calendar's anchor.
-      nonInput: el.nodeName !== 'INPUT',
-
-      // Flag indicating if `el` is 'body' for `calculatePosition`.
-      noPosition: noPosition,
-
-      // Calendar position relative to `el`.
-      position: noPosition ? false : options.position,
-
-      // Date obj used to indicate what month to start the calendar on.
-      startDate: startDate,
-
-      // Starts the calendar with a date selected.
-      dateSelected: dateSelected,
-
-      // An array of dates to disable.
-      disabledDates: options.disabledDates,
-
-      // Low end of selectable dates.
-      minDate: options.minDate,
-
-      // High end of selectable dates.
-      maxDate: options.maxDate,
-
-      // Disabled the ability to select days on the weekend.
-      noWeekends: !!options.noWeekends,
-
-      // Indices for "Saturday" and "Sunday" repsectively.
-      weekendIndices: options.weekendIndices,
-
-      // The element our calendar is constructed in.
-      calendar: calendar,
-
-      // Month of `startDate` or `dateSelected` (as a number).
-      currentMonth: (startDate || dateSelected).getMonth(),
-
-      // Month name in plain english - or not.
-      currentMonthName: (options.months || months)[(startDate || dateSelected).getMonth()],
-
-      // Year of `startDate` or `dateSelected`.
-      currentYear: (startDate || dateSelected).getFullYear(),
-
-
-
-      // Method to programatically set the calendar's date.
-      setDate: setDate,
-
-      // Method to programatically reset the calendar.
-      reset: reset,
-
-      // Method that removes the calendar from the DOM along with associated events.
-      remove: remove,
-
-      // Method to programatically change the minimum selectable date.
-      setMin: setMin,
-
-      // Method to programatically change the maximum selectable date.
-      setMax: setMax,
-
-
-
-      // Callback fired when a date is selected - triggered in `selectDay`.
-      onSelect: options.onSelect,
-
-      // Callback fired when the calendar is shown - triggered in `showCal`.
-      onShow: options.onShow,
-
-      // Callback fired when the calendar is hidden - triggered in `hideCal`.
-      onHide: options.onHide,
-
-      // Callback fired when the month is changed - triggered in `changeMonthYear`.
-      onMonthChange: options.onMonthChange,
-
-      // Function to customize the date format updated on <input> elements - triggered in `setCalendarInputValue`.
-      formatter: options.formatter,
-
-
-
-      // Labels for months - custom or default.
-      months: options.months || months,
-
-      // Labels for days - custom or default.
-      days: options.customDays || days,
-
-      // Start day of the week - indexed from `days` above.
-      startDay: options.startDay,
-
-      // Custom overlay placeholder.
-      overlayPlaceholder: options.overlayPlaceholder || '4-digit year',
-
-      // Custom overlay submit button.
-      overlayButton: options.overlayButton || 'Submit',
-
-      // Disable the overlay for changing the year.
-      disableYearOverlay: options.disableYearOverlay,
-
-      // Disable the datepicker on mobile devices.
-      // Allows the use of native datepicker if the input type is 'date'.
-      disableMobile: options.disableMobile,
-
-      // Used in conjuntion with `disableMobile` above within `oneHandler`.
-      isMobile: 'ontouchstart' in window,
-
-      // Prevents the calendar from hiding.
-      alwaysShow: !!options.alwaysShow,
-
-      // Used to connect 2 datepickers together to form a daterange picker.
-      id: options.id
-    };
-
-    // Initially populate the <input> field / set attributes on the `el`.
-    if (dateSelected) setCalendarInputValue(el, instance);
-
-    // Keep track of all our instances in an array.
-    datepickers.push(instance);
-
-    // Add any needed styles to the parent element.
-    if (!noPosition && getComputedStyle(parent).position === 'static') {
-      instance.parentCssText = parent.style.cssText;
-      parent.style.cssText += 'position: relative;';
-    }
-
-    // Put our instance's calendar in the DOM.
-    parent.appendChild(calendar);
-
-    // Conditionally show the calendar.
-    instance.alwaysShow && showCal(instance);
-
-    return instance;
-  }
-
-  /*
    *  Returns an object containing all the default settings.
    */
   function defaults() {
@@ -381,11 +386,26 @@
     const overlay = instance.calendar.querySelector('.qs-overlay');
     const overlayOpen = overlay && !overlay.classList.contains('qs-hidden');
 
-    instance.calendar.innerHTML = [
+    const html1 = [
       createControls(date, instance, overlayOpen),
       createMonth(date, instance, overlayOpen),
       createOverlay(instance, overlayOpen)
     ].join('');
+
+    if (instance.range) {
+      const newDate = stripTime(new Date(date).setMonth(date.getMonth() + 1))
+
+      const html2 = [
+        createControls(newDate, instance, overlayOpen),
+        createMonth(newDate, instance, overlayOpen),
+        createOverlay(instance, overlayOpen)
+      ].join('');
+      const container1 = `<div class="qs-range-container qs-range-one">${html1}</div>`;
+      const container2 = `<div class="qs-range-container qs-range-two">${html2}</div>`;
+      instance.calendar.innerHTML = `${container1}${container2}`;
+    } else {
+      instance.calendar.innerHTML = html1;
+    }
 
     /*
       When the overlay is open and we submit a year, the calendar's html
@@ -420,8 +440,6 @@
   function createMonth(date, instance, overlayOpen) {
     const {
       // Dynamic properties.
-      currentMonth,
-      currentYear,
       dateSelected,
       maxDate,
       minDate,
@@ -434,7 +452,9 @@
       weekendIndices
     } = instance;
 
-    // Same year, same month?
+    // Is the provided `date` the same year & month as now?
+    const currentMonth = date.getMonth();
+    const currentYear = date.getFullYear();
     const today = new Date();
     const isThisMonth = currentYear === today.getFullYear() && currentMonth === today.getMonth();
 

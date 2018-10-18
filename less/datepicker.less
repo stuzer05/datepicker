@@ -20,6 +20,29 @@
   background: white;
   box-shadow: 0 (@width * .08) (@width * .08) -(@width * .06) rgba(0,0,0,.3);
 
+  &.qs-range {
+    width: @width * 2;
+    flex-direction: row;
+  }
+
+  .qs-range-container {
+    &.qs-range-one {
+      .qs-squares {
+        border-right: @border-width solid lighten(gray, 35%);
+      }
+
+      .qs-arrow.qs-right {
+        visibility: hidden;
+      }
+    }
+
+    &.qs-range-two {
+      .qs-arrow.qs-left {
+        visibility: hidden;
+      }
+    }
+  }
+
   * {
     box-sizing: border-box;
   }
