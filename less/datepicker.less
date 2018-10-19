@@ -26,11 +26,9 @@
   }
 
   .qs-range-container {
-    &.qs-range-one {
-      .qs-squares {
-        border-right: @border-width solid lighten(gray, 35%);
-      }
+    width: calc(50% - 1px);
 
+    &.qs-range-one {
       .qs-arrow.qs-right {
         visibility: hidden;
       }
@@ -41,6 +39,10 @@
         visibility: hidden;
       }
     }
+  }
+
+  .qs-separator {
+    border-left: 1px solid lightgray;
   }
 
   * {

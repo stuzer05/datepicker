@@ -186,7 +186,7 @@
       // Prevents the calendar from hiding.
       alwaysShow: !!options.alwaysShow,
 
-      // Used to connect 2 datepickers together to form a daterange picker.
+      // Used to connect 2 datepickers together to form a daterange picker that can be controlled manually.
       id: options.id,
 
       // Creates a single instance that produces calendars side by side.
@@ -393,16 +393,18 @@
     ].join('');
 
     if (instance.range) {
-      const newDate = stripTime(new Date(date).setMonth(date.getMonth() + 1))
-
+      const newDate = stripTime(new Date(date).setMonth(date.getMonth() + 1));
       const html2 = [
         createControls(newDate, instance, overlayOpen),
         createMonth(newDate, instance, overlayOpen),
         createOverlay(instance, overlayOpen)
       ].join('');
-      const container1 = `<div class="qs-range-container qs-range-one">${html1}</div>`;
-      const container2 = `<div class="qs-range-container qs-range-two">${html2}</div>`;
-      instance.calendar.innerHTML = `${container1}${container2}`;
+
+      instance.calendar.innerHTML = [
+        `<div class="qs-range-container qs-range-one">${html1}</div>`,
+        '<div class="qs-separator"></div>',
+        `<div class="qs-range-container qs-range-two">${html2}</div>`
+      ].join('');
     } else {
       instance.calendar.innerHTML = html1;
     }
@@ -574,6 +576,8 @@
     // and store the individual date values as attributes.
     setCalendarInputValue(el, instance);
 
+    if (instance.range) renderCalendar(instance.dateSelected, instance);
+
     // Hide the calendar after a day has been selected.
     hideCal(instance);
 
@@ -741,6 +745,11 @@
       submit.classList[badDate ? 'add' : 'remove']('qs-disabled');
     }
   }
+
+
+  ///////////////////
+  // EVENT HANDLER //
+  ///////////////////
 
   /*
    *  A single function to handle the 4 events we track - click, focusin, keydown, & input.
