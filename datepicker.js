@@ -396,8 +396,8 @@
       const newDate = stripTime(new Date(date).setMonth(date.getMonth() + 1));
       const html2 = [
         createControls(newDate, instance, overlayOpen),
-        createMonth(newDate, instance, overlayOpen),
-        createOverlay(instance, overlayOpen)
+        createMonth(newDate, instance, overlayOpen)
+        // Don't create an overlay on the 2nd calendar for a daterange picker.
       ].join('');
 
       instance.calendar.innerHTML = [
@@ -709,18 +709,18 @@
     const { calendar } = instance;
     const overlay = calendar.querySelector('.qs-overlay');
     const yearInput = overlay.querySelector('.qs-overlay-year');
-    const controls = calendar.querySelector('.qs-controls');
-    const squaresContainer = calendar.querySelector('.qs-squares');
+    const controls = [...calendar.querySelectorAll('.qs-controls')];
+    const squaresContainer = [...calendar.querySelectorAll('.qs-squares')];
 
     if (closing) {
       overlay.classList.add('qs-hidden');
-      controls.classList.remove('qs-blur');
-      squaresContainer.classList.remove('qs-blur');
+      controls.forEach(el => el.classList.remove('qs-blur'));
+      squaresContainer.forEach(el => el.classList.remove('qs-blur'));
       yearInput.value = '';
     } else {
       overlay.classList.remove('qs-hidden');
-      controls.classList.add('qs-blur');
-      squaresContainer.classList.add('qs-blur');
+      controls.forEach(el => el.classList.add('qs-blur'));
+      squaresContainer.forEach(el => el.classList.add('qs-blur'));
       yearInput.focus();
     }
   }
@@ -777,8 +777,9 @@
       if (!instance) return datepickers.forEach(hideCal);
 
       const { calendar, disableYearOverlay } = instance;
-      const overlayClosed = !!calendar.querySelector('.qs-hidden');
-      const monthYearClicked = calendar.querySelector('.qs-month-year').contains(target);
+      const overlayClosed = !!calendar.querySelector('.qs-hidden'); // Only one, even in a daterange.
+      const monthYearClicked = [...calendar.querySelectorAll('.qs-month-year')]
+        .some(monthYear => monthYear.contains(target));
 
       // Calendar's el is 'body'.
       // Anything but the calendar was clicked.

@@ -24,14 +24,17 @@
   -ms-flex-direction: row;
       flex-direction: row;
 }
-.qs-datepicker .qs-range-container.qs-range-one .qs-squares {
-  border-right: 1px solid #d9d9d9;
+.qs-datepicker .qs-range-container {
+  width: calc(50% - 1px);
 }
 .qs-datepicker .qs-range-container.qs-range-one .qs-arrow.qs-right {
   visibility: hidden;
 }
 .qs-datepicker .qs-range-container.qs-range-two .qs-arrow.qs-left {
   visibility: hidden;
+}
+.qs-datepicker .qs-separator {
+  border-left: 1px solid lightgray;
 }
 .qs-datepicker * {
   box-sizing: border-box;
