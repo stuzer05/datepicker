@@ -1,5 +1,6 @@
 const datepicker = require('../src/datepicker')
 
+
 describe('Initialization' ,() => {
   let picker = undefined
 
@@ -79,9 +80,9 @@ describe('Initialization' ,() => {
     // Remaining properties.
     expect(picker.alwaysShow).toBe(false)
     expect(picker.days).toEqual(days)
-    expect(picker.disableMobile).toBe(undefined)
+    expect(picker.disableMobile).toBe(false)
     expect(picker.hasOwnProperty('disableMobile')).toBe(true)
-    expect(picker.disableYearOverlay).toBe(undefined)
+    expect(picker.disableYearOverlay).toBe(false)
     expect(picker.hasOwnProperty('disableYearOverlay')).toBe(true)
     expect(picker.disabledDates).toEqual([])
     expect(picker.disabler).toBe(false)

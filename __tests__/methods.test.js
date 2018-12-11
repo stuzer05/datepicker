@@ -1,9 +1,6 @@
 const datepicker = require('../src/datepicker')
+const todaysDate = require('./todaysDate')
 
-function todaysDate() {
-  const today = new Date()
-  return [today.getFullYear(), today.getMonth()]
-}
 
 describe('Instance Methods', () => {
   describe('remove()', () => {

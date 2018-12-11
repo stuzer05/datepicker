@@ -1,5 +1,6 @@
 const datepicker = require('../src/datepicker')
 
+
 describe('Setting Inline Position', () => {
   beforeEach(() => document.body.innerHTML = '<input type="text" />')
 
