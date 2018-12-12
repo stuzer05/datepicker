@@ -198,7 +198,9 @@ describe('Properties', () => {
         const customDays = ['1', '2', '3', '4', '5', '6', '7']
         const customMonths = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12']
         const today = new Date()
-        const [year, month, day] = todaysDate()
+        const disabledDate = new Date(2001, 0, 1)
+        const minDate = new Date(2000, 0, 1)
+        const maxDate = new Date(2099, 0, 1)
 
         picker = datepicker('input', {
           onSelect: fxn,
@@ -213,26 +215,70 @@ describe('Properties', () => {
           overlayPlaceholder: 'Overlay Placeholder',
           alwaysShow: true,
           dateSelected: today,
-          maxDate: new Date(2099, 0, 1),
-          minDate: new Date(2000, 0, 1),
-          startDate: new Date(),
+          maxDate,
+          minDate,
+          startDate: today,
           noWeekends: true,
           disabler: fxn,
-          disabledDates: [new Date(2001, 0, 1)],
-          disabledMobile: true,
-          disabledYearOverlay: true,
-          id: 1
+          disabledDates: [disabledDate],
+          disableMobile: true,
+          disableYearOverlay: true,
+          id: 1,
+          // position: 'bl' => this is the default position.
         })
 
         // This picker is only here to trigger a daterange pair so
         // that the `id` property above actually does something.
         const picker2 = datepicker('body', { id: 1 })
 
-        callbacks.forEach(cb => expect(picker[cb]).toBe(fxn))
-        expect(picker.formatter).toBe(fxn)
-        expect(picker.startDay).toBe(5)
-        expect(picker.days).toEqual(['6','7','1','2','3','4','5']) // Because `startDay` is 5.
+        // Properties.
+        expect(picker.el).toBe(document.querySelector('input'))
+        expect(picker.parent).toBe(picker.el.parentElement)
+        expect(picker.nonInput).toBe(false)
+        expect(picker.noPosition).toBe(false)
+        expect(picker.position).toEqual({ bottom: 1, left: 1 })
+        expect(+picker.startDate).toBe(+new Date(today.getFullYear(), today.getMonth(), today.getDate()))
+        expect(+picker.dateSelected).toBe(+new Date(today.getFullYear(), today.getMonth(), today.getDate()))
+        expect(picker.disabledDates.length).toBe(1)
+        expect(+picker.disabledDates[0]).toBe(+disabledDate)
+        expect(+picker.minDate).toBe(+minDate)
+        expect(+picker.maxDate).toBe(+maxDate)
+        expect(picker.noWeekends).toBe(true)
+        expect(picker.weekendIndices).toEqual([1, 2])
+        expect(picker.calendar).toBe(document.querySelector('.qs-datepicker'))
+        expect(picker.currentMonth).toBe(today.getMonth())
+        expect(picker.currentMonthName).toBe(customMonths[today.getMonth()])
+        expect(picker.currentYear).toBe(today.getFullYear())
         expect(picker.months).toEqual(customMonths)
+        expect(picker.days).toEqual(['6','7','1','2','3','4','5']) // Because `startDay` is 5.
+        expect(picker.startDay).toBe(5)
+        expect(picker.overlayPlaceholder).toBe('Overlay Placeholder')
+        expect(picker.overlayButton).toBe('Overlay Button')
+        expect(picker.disableYearOverlay).toBe(true)
+        expect(picker.disableMobile).toBe(true)
+        expect(picker.isMobile).toBe(false)
+        expect(picker.alwaysShow).toBe(true)
+        expect(picker.id).toBe(1)
+
+        // Methods.
+        methods.forEach(method => expect(typeof picker[method]).toBe('function'))
+
+        // Callbacks.
+        callbacks.forEach(cb => expect(picker[cb]).toBe(fxn))
+
+        // Functions.
+        expect(picker.formatter).toBe(fxn)
+        expect(picker.disabler).toBe(fxn)
+
+        // Conditionals.
+        expect(picker.sibling).toBe(picker2)
+        expect(picker.first).toBe(true)
+
+        /*
+        'sibling',
+        'first',
+        'inlinePosition'
+        */
       })
     })
   })
