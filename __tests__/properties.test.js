@@ -103,11 +103,13 @@ describe('Properties', () => {
         const hasAllProperties = properties.every(prop => picker.hasOwnProperty(prop))
         const hasAllMethods = methods.every(method => picker.hasOwnProperty(method))
         const hasAllFunctions = functions.every(func => picker.hasOwnProperty(func))
-        const hasNoConditionals = conditionals.every(prop => !picker.hasOwnProperty(prop))
 
         expect(hasAllProperties).toBe(true)
         expect(hasAllMethods).toBe(true)
         expect(hasAllFunctions).toBe(true)
+        expect(picker.sibling).toBe(undefined)
+        expect(picker.first).toBe(undefined)
+        expect(picker.inlinePosition).toBe(true)
       })
 
       it('should have the correct values', () => {
