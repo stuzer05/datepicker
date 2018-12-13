@@ -182,7 +182,7 @@ describe('Properties', () => {
         callbacks.forEach(cb => expect(picker[cb]).toBe(false))
       })
 
-      it('should have the correct properties when all options are passed in', () => {
+      it('should have the correct properties & values when *every* option is passed in', () => {
         const fxn = () => {}
         const customDays = ['1', '2', '3', '4', '5', '6', '7']
         const customMonths = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12']
@@ -226,8 +226,8 @@ describe('Properties', () => {
         expect(picker.nonInput).toBe(false)
         expect(picker.noPosition).toBe(false)
         expect(picker.position).toEqual({ bottom: 1, left: 1 })
-        expect(+picker.startDate).toBe(+new Date(today.getFullYear(), today.getMonth(), today.getDate()))
-        expect(+picker.dateSelected).toBe(+new Date(today.getFullYear(), today.getMonth(), today.getDate()))
+        expect(+picker.startDate).toBe(+new Date(year, month, day))
+        expect(+picker.dateSelected).toBe(+new Date(year, month, day))
         expect(picker.disabledDates.length).toBe(1)
         expect(+picker.disabledDates[0]).toBe(+disabledDate)
         expect(+picker.minDate).toBe(+minDate)
@@ -235,9 +235,9 @@ describe('Properties', () => {
         expect(picker.noWeekends).toBe(true)
         expect(picker.weekendIndices).toEqual([1, 2])
         expect(picker.calendar).toBe(document.querySelector('.qs-datepicker'))
-        expect(picker.currentMonth).toBe(today.getMonth())
-        expect(picker.currentMonthName).toBe(customMonths[today.getMonth()])
-        expect(picker.currentYear).toBe(today.getFullYear())
+        expect(picker.currentMonth).toBe(month)
+        expect(picker.currentMonthName).toBe(customMonths[month])
+        expect(picker.currentYear).toBe(year)
         expect(picker.months).toEqual(customMonths)
         expect(picker.days).toEqual(['6','7','1','2','3','4','5']) // Because `startDay` is 5.
         expect(picker.startDay).toBe(5)
