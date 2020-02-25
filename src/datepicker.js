@@ -6,6 +6,7 @@ require('./datepicker.scss')
 
 
 var datepickers = [] // Get's reassigned in `remove()` below.
+var shadowDoms = []
 var days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 var months = [
   'January',
@@ -52,11 +53,23 @@ var events = ['click', 'focusin', 'keydown', 'input']
  *  Datepicker! Get a date with JavaScript...
  */
 function datepicker(selector, options) {
-  // Apply the event listeners only once.
-  if (!datepickers.length) applyListeners(options.root || document)
-
   // Create the datepicker instance!
   var instance = createInstance(selector, options)
+
+  /*
+    Apply the event listeners to the document only once.
+    Using document instead of window because #iphone :/
+    Safari won't handle the click event properly if it's on the window.
+  */
+  if (!datepickers.length) applyListeners(document)
+
+  // Keep track of all our instances in an array.
+  datepickers.push(instance)
+
+  // Shadow DOM's get their own listeners too. Apply them only once per shadow DOM.
+  if (instance.shadowDom && !shadowDoms.includes(instance.shadowDom)) {
+    applyListeners(instance.shadowDom, true) // 2nd argument stops propagation.
+  }
 
   /*
     Daterange processing!
@@ -90,11 +103,12 @@ function datepicker(selector, options) {
  *  The goal is to ever only have one set of listeners regardless
  *  of how many datepicker instances have been initialized.
  */
-function applyListeners(root) {
-  // Using document instead of window because #iphone :/
-  // Safari won't handle the click event properly if it's on the window.
-  events.forEach(function(event) {
-    root.addEventListener(event, oneHandler)
+function applyListeners(root, stopPropagation) {
+  events.forEach(function(eventName) {
+    root.addEventListener(eventName, function(e) {
+      if (stopPropagation) e.stopPropagation()
+      oneHandler(e)
+    })
   })
 }
 
@@ -103,6 +117,22 @@ function applyListeners(root) {
  *  Calls `setCalendarInputValue` and conditionally `showCal`.
  */
 function createInstance(selector, opts) {
+  var root = document
+  var shadowDom
+
+  /*
+    Check if we have a valid shadow DOM. We're checking this here instead of
+    in `sanitizeOptions` because if `shadowDom` was provided, it affects
+    how we query for `el` - document or shadowDom.
+  */
+  if (opts && opts.shadowDom) {
+    if (type(opts.shadowDom) !== '[object ShadowRoot]') {
+      throw '"options.shadowRoot" must be a shadow DOM.'
+    } else {
+      root = shadowDom = opts.shadowDom
+    }
+  }
+
   /*
     In the case that the selector is an id beginning with a number (#123),
     querySelector will fail. That's why we need to check and
@@ -110,7 +140,7 @@ function createInstance(selector, opts) {
   */
   var el = selector
   if (typeof el === 'string') {
-    el = el[0] === '#' ? document.getElementById(el.slice(1)) : document.querySelector(el)
+    el = el[0] === '#' ? root.getElementById(el.slice(1)) : root.querySelector(el)
   }
 
   if (!el) throw ('No selector / element found.')
@@ -129,7 +159,8 @@ function createInstance(selector, opts) {
 
 
   var instance = {
-    root: opts.root || document,
+    // For instances that are attached to a shadow DOM, keep track of their root.
+    shadowDom: shadowDom,
 
     // The calendar will be positioned relative to this element (except when 'body').
     el: el,
@@ -339,9 +370,6 @@ function createInstance(selector, opts) {
     })
   }
 
-  // Keep track of all our instances in an array.
-  datepickers.push(instance)
-
   // Put our instance's calendar in the DOM.
   calendarContainer.appendChild(calendar)
   parent.appendChild(calendarContainer)
@@ -359,7 +387,7 @@ function createInstance(selector, opts) {
 function freshCopy(item) {
   if (Array.isArray(item)) return item.map(freshCopy)
 
-  if (({}).toString.call(item) === '[object Object]') {
+  if (type(item) === '[object Object]') {
     return Object.keys(item).reduce(function(newObj, key) {
       newObj[key] = freshCopy(item[key])
       return newObj
@@ -374,7 +402,7 @@ function freshCopy(item) {
  *  Returns an options object if everything checks out.
  */
 function sanitizeOptions(opts, el) {
-  // Check if the provided element already has a datepicker attached.
+    // Check if the provided element already has a datepicker attached.
   if (datepickers.some(function(picker) { return picker.el === el })) throw 'A datepicker already exists on that element.'
 
   // Avoid mutating the original object that was supplied by the user.
@@ -396,15 +424,15 @@ function sanitizeOptions(opts, el) {
     Check that various options have been provided a JavaScript Date object.
     If so, strip the time from those dates (for accurate future comparisons).
   */
-  ;['startDate', 'dateSelected', 'minDate', 'maxDate'].forEach(function(value) {
-    var date = options[value]
-    if (date && !dateCheck(date)) throw '"options.' + value + '" needs to be a valid JavaScript Date object.'
+  ;['startDate', 'dateSelected', 'minDate', 'maxDate'].forEach(function(prop) {
+    var date = options[prop]
+    if (date && !dateCheck(date)) throw '"options.' + prop + '" needs to be a valid JavaScript Date object.'
 
     /*
       Strip the time from the date.
       For dates not supplied, stripTime will return undefined.
     */
-    options[value] = stripTime(date)
+    options[prop] = stripTime(date)
   })
 
   var position = options.position
@@ -432,7 +460,7 @@ function sanitizeOptions(opts, el) {
 
   // If id was provided, it cannot me null or undefined.
   if (options.hasOwnProperty('id') && id == null) {
-    throw 'Id cannot be `null` or `undefined`'
+    throw '"id" cannot be `null` or `undefined`.'
   }
 
   /*
@@ -942,11 +970,18 @@ function calculatePosition(instance) {
 }
 
 /*
+ *  Helper functioon that returns a string of what type a thing is.
+ */
+function type(thing) {
+  return ({}).toString.call(thing)
+}
+
+/*
  *  Checks for a valid date object.
  */
 function dateCheck(date) {
   return (
-    ({}).toString.call(date) === '[object Date]' &&
+    type(date) === '[object Date]' &&
     date.toString() !== 'Invalid Date'
   )
 }
@@ -1081,6 +1116,11 @@ function oneHandler(e) {
   })[0]
   var onCal = instance && instance.calendar.contains(target)
 
+  // console.log('target:', e.target) // The element which the event was triggered on.
+  // console.log('currentTarget:', e.currentTarget) // The root element thich the listener is attached to.
+  console.log('instance:', instance)
+  console.log('-------------------------------------------------')
+
 
   // Ignore event handling for mobile devices when disableMobile is true.
   if (instance && instance.isMobile && instance.disableMobile) return
@@ -1187,6 +1227,14 @@ function oneHandler(e) {
     target.value = newValue
     submitButton.classList[newValue.length === 4 ? 'remove' : 'add']('qs-disabled')
   }
+}
+
+/*
+ *  Removes event handlers on either the document or shadow DOM roots.
+ *  Called by the `remove` method.
+ */
+function removeHandlers(root) {
+  events.forEach(function(event) { root.removeEventListener(event, oneHandler) })
 }
 
 
@@ -1440,8 +1488,9 @@ function remove() {
   var inlinePosition = this.inlinePosition
   var parent = this.parent
   var calendarContainer = this.calendarContainer
-  var el = this.el
   var sibling = this.sibling
+  var shadowDom = this.shadowDom
+  var hasShadowDom = !!shadowDom
   var _this = this
 
   // Remove styling done to the parent element and reset it back to its original
@@ -1451,22 +1500,47 @@ function remove() {
     if (!found) parent.style.setProperty('position', null)
   }
 
+  var pickersOnDocument = []
+  var pickersOnParticularShadowDom = []
+  datepickers = datepickers.reduce(function(acc, picker) {
+    // Filter out this picker from the datepickers list.
+    if (picker === _this) return acc
+
+
+    // Create a list of all the instances on this instance's shadow DOM.
+    if (hasShadowDom && picker.shadowDom === shadowDom) {
+      pickersOnParticularShadowDom.push(picker)
+    }
+
+    // Create a list of all the instances without a shadow DOM.
+    if (!hasShadowDom) pickersOnDocument.push(picker)
+
+    // The new filtered list of datepickers.
+    return acc.concat(picker)
+  }, [])
+
   // Remove the calendar from the DOM.
   calendarContainer.remove()
 
-  // Remove this instance from the list.
-  datepickers = datepickers.filter(function(picker) { return picker.el !== el })
+  // Remove siblings references & standing as a daterange pair.
+  if (sibling) {
+    delete sibling.sibling
+    delete sibling.first
+    delete sibling.second
+  }
 
-  // Remove siblings references.
-  if (sibling) delete sibling.sibling
+  // Decide wether to remove the event handlers from the document or shadow DOM's.
+  if (!pickersOnDocument.length) {
+    removeHandlers(document)
+  }
+
+  // Decide wether to remove the event handlers from the shadow DOM.
+  if (!pickersOnParticularShadowDom.length) {
+    removeHandlers(shadowDom)
+  }
 
   // Empty this instance of all properties.
-  for (prop in this) delete this[prop]
-
-  // If this was the last datepicker in the list, remove the event handlers.
-  if (!datepickers.length) {
-    events.forEach(function(event) { document.removeEventListener(event, oneHandler) })
-  }
+  for (var prop in this) delete this[prop]
 }
 
 module.exports = datepicker

@@ -1,9 +1,12 @@
+// https://developer.mozilla.org/en-US/docs/Web/Web_Components/Using_custom_elements
+// https://css-tricks.com/styling-a-web-component/
+
 class TestCal extends HTMLElement {
   constructor() {
     super()
   }
   connectedCallback() {
-    const shadow = this.attachShadow({ mode: 'open' })
+    const shadow = this.attachShadow({ mode: 'closed' })
 
     shadow.innerHTML = `
       <div id="shadow-root">
@@ -15,7 +18,7 @@ class TestCal extends HTMLElement {
 
     const style = document.createElement('style')
     style.textContent = `
-      @import "https://unpkg.com/js-datepicker/dist/datepicker.min.css";
+      @import "http://localhost:9001/datepicker.min.css";
       #shadow-root {
         padding: 20px;
         border: 1px solid lime;
@@ -24,7 +27,8 @@ class TestCal extends HTMLElement {
     `
     shadow.appendChild(style)
 
-    const instance = datepicker(shadow.querySelector('input'), { root: shadow })
+    window.x = datepicker(shadow.querySelector('input'), { shadowDom: shadow })
+    window.y = datepicker(shadow.querySelector('h1'), { shadowDom: shadow })
   }
 }
 
@@ -32,3 +36,5 @@ customElements.define('test-cal', TestCal)
 
 const el = document.createElement('test-cal')
 document.body.appendChild(el)
+
+window.z = datepicker('input')
