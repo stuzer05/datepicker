@@ -6,7 +6,6 @@ require('./datepicker.scss')
 
 
 var datepickers = [] // Get's reassigned in `remove()` below.
-var shadowDoms = []
 var days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 var months = [
   'January',
@@ -63,13 +62,17 @@ function datepicker(selector, options) {
   */
   if (!datepickers.length) applyListeners(document)
 
+  // Shadow DOM's get their own listeners too. Apply them only once per shadow DOM.
+  if (instance.shadowDom) {
+    var shadowDomInUse = datepickers.find(function(picker) {
+      return picker.shadowDom === instance.shadowDom
+    })
+
+    if (!shadowDomInUse) applyListeners(instance.shadowDom)
+  }
+
   // Keep track of all our instances in an array.
   datepickers.push(instance)
-
-  // Shadow DOM's get their own listeners too. Apply them only once per shadow DOM.
-  if (instance.shadowDom && !shadowDoms.includes(instance.shadowDom)) {
-    applyListeners(instance.shadowDom, true) // 2nd argument stops propagation.
-  }
 
   /*
     Daterange processing!
@@ -103,12 +106,9 @@ function datepicker(selector, options) {
  *  The goal is to ever only have one set of listeners regardless
  *  of how many datepicker instances have been initialized.
  */
-function applyListeners(root, stopPropagation) {
+function applyListeners(root) {
   events.forEach(function(eventName) {
-    root.addEventListener(eventName, function(e) {
-      if (stopPropagation) e.stopPropagation()
-      oneHandler(e)
-    })
+    root.addEventListener(eventName, oneHandler)
   })
 }
 
@@ -1118,6 +1118,7 @@ function oneHandler(e) {
 
   // console.log('target:', e.target) // The element which the event was triggered on.
   // console.log('currentTarget:', e.currentTarget) // The root element thich the listener is attached to.
+  console.log('type:', type)
   console.log('instance:', instance)
   console.log('-------------------------------------------------')
 

@@ -1,6 +1,9 @@
 // https://developer.mozilla.org/en-US/docs/Web/Web_Components/Using_custom_elements
 // https://css-tricks.com/styling-a-web-component/
-
+document.querySelector('.hi').addEventListener('click', e => {
+  console.log('hi clicked')
+  e.stopPropagation()
+})
 class TestCal extends HTMLElement {
   constructor() {
     super()
