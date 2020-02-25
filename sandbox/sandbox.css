@@ -35,3 +35,7 @@ input {
   text-align: center;
   background: pink;
 }
+
+button {
+  color: red;
+}

@@ -4,6 +4,7 @@
   },
   "ignorePatterns": [
     "webpack.config.js",
-    "test-app.js"
+    "test-app.js",
+    "dev-app.js"
   ]
 }

@@ -22,7 +22,7 @@ module.exports = (env, argv) => ({
   entry: (() => {
     const entry = {
       datepicker: path.resolve(__dirname, 'src/datepicker.js'),
-      sandbox: env.dev && path.resolve(__dirname, 'sandbox/test-app.js'),
+      sandbox: env.dev && path.resolve(__dirname, 'sandbox/dev-app.js'),
       'test-app': env.test && path.resolve(__dirname, 'sandbox/test-app.js')
     }
 

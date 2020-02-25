@@ -53,7 +53,7 @@ var events = ['click', 'focusin', 'keydown', 'input']
  */
 function datepicker(selector, options) {
   // Apply the event listeners only once.
-  if (!datepickers.length) applyListeners()
+  if (!datepickers.length) applyListeners(options.root || document)
 
   // Create the datepicker instance!
   var instance = createInstance(selector, options)
@@ -90,11 +90,11 @@ function datepicker(selector, options) {
  *  The goal is to ever only have one set of listeners regardless
  *  of how many datepicker instances have been initialized.
  */
-function applyListeners() {
+function applyListeners(root) {
   // Using document instead of window because #iphone :/
   // Safari won't handle the click event properly if it's on the window.
   events.forEach(function(event) {
-    document.addEventListener(event, oneHandler)
+    root.addEventListener(event, oneHandler)
   })
 }
 
@@ -129,6 +129,8 @@ function createInstance(selector, opts) {
 
 
   var instance = {
+    root: opts.root || document,
+
     // The calendar will be positioned relative to this element (except when 'body').
     el: el,
 
