@@ -1,9 +1,6 @@
 // https://developer.mozilla.org/en-US/docs/Web/Web_Components/Using_custom_elements
 // https://css-tricks.com/styling-a-web-component/
-document.querySelector('.hi').addEventListener('click', e => {
-  console.log('hi clicked')
-  e.stopPropagation()
-})
+
 class TestCal extends HTMLElement {
   constructor() {
     super()
@@ -30,7 +27,7 @@ class TestCal extends HTMLElement {
     `
     shadow.appendChild(style)
 
-    window.x = datepicker(shadow.querySelector('input'), { shadowDom: shadow })
+    window.x = datepicker(shadow.querySelector('input'), { shadowDom: shadow, position: 'tl', alwaysShow: 1 })
     window.y = datepicker(shadow.querySelector('h1'), { shadowDom: shadow })
   }
 }
@@ -41,3 +38,4 @@ const el = document.createElement('test-cal')
 document.body.appendChild(el)
 
 window.z = datepicker('input')
+window.hi = datepicker('.hi')

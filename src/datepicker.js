@@ -64,11 +64,15 @@ function datepicker(selector, options) {
 
   // Shadow DOM's get their own listeners too. Apply them only once per shadow DOM.
   if (instance.shadowDom) {
+    /*
+      Check if this shadow DOM already has a picker instantiated
+      on it to avoid applying the listeners more than once.
+    */
     var shadowDomInUse = datepickers.find(function(picker) {
       return picker.shadowDom === instance.shadowDom
     })
 
-    if (!shadowDomInUse) applyListeners(instance.shadowDom)
+    if (!shadowDomInUse) applyListeners(instance.shadowDom, true)
   }
 
   // Keep track of all our instances in an array.
@@ -98,17 +102,30 @@ function datepicker(selector, options) {
 
 /*
  *  Applies the event listeners.
+ * `root` is either the document or a shadow DOM.
  *  This will be called the first time datepicker is run.
  *  It will also be called on the first run *after* having removed
  *  all previous instances from the DOM. In other words, it only
  *  runs the first time for each "batch" of datepicker instances.
  *
- *  The goal is to ever only have one set of listeners regardless
+ *  The goal is to ever only apply listeners once regardless
  *  of how many datepicker instances have been initialized.
  */
-function applyListeners(root) {
+function applyListeners(root, isShadowDom) {
   events.forEach(function(eventName) {
-    root.addEventListener(eventName, oneHandler)
+    root.addEventListener(eventName, function(e) {
+      /*
+        In the case of a shadow DOM, the listeners will be triggered on
+        the shadow DOM first, then again on the document. In that case,
+        we want the first run on the shadow DOM to go normally but we want
+        the second run on the document to be ignored. To achieve this, we
+        set a flag on the event object AFTER the initial run so that when
+        these events finally bubble to the document and trigger the listeners
+        a second time, we have the property to tell them to do nothing.
+      */
+      oneHandler(e)
+      if (isShadowDom) e.__qs_is_shadow_dom = true
+    })
   })
 }
 
@@ -123,7 +140,7 @@ function createInstance(selector, opts) {
   /*
     Check if we have a valid shadow DOM. We're checking this here instead of
     in `sanitizeOptions` because if `shadowDom` was provided, it affects
-    how we query for `el` - document or shadowDom.
+    how we query for `el` below - document or shadowDom.
   */
   if (opts && opts.shadowDom) {
     if (type(opts.shadowDom) !== '[object ShadowRoot]') {
@@ -143,7 +160,7 @@ function createInstance(selector, opts) {
     el = el[0] === '#' ? root.getElementById(el.slice(1)) : root.querySelector(el)
   }
 
-  if (!el) throw ('No selector / element found.')
+  if (!el) throw 'No selector / element found.'
 
   var options = sanitizeOptions(opts || defaults(), el)
   var noPosition = el === document.body
@@ -1108,6 +1125,13 @@ function overlayYearEntry(e, input, instance, overlayMonthIndex) {
  *  all datepicker instances have had their `remove` method called.
  */
 function oneHandler(e) {
+  /*
+    This property is set in `applyListeners`. Explanation can be found there.
+    Basically, if this property was true, the even originated from the
+    shadow DOM and was already handled previously by the listeners there,
+  */
+  if (e.__qs_is_shadow_dom) return
+
   var type = e.type
   var target = e.target
   var classList = target.classList
@@ -1115,13 +1139,6 @@ function oneHandler(e) {
     return picker.calendar.contains(target) || picker.el === target
   })[0]
   var onCal = instance && instance.calendar.contains(target)
-
-  // console.log('target:', e.target) // The element which the event was triggered on.
-  // console.log('currentTarget:', e.currentTarget) // The root element thich the listener is attached to.
-  console.log('type:', type)
-  console.log('instance:', instance)
-  console.log('-------------------------------------------------')
-
 
   // Ignore event handling for mobile devices when disableMobile is true.
   if (instance && instance.isMobile && instance.disableMobile) return
@@ -1133,10 +1150,12 @@ function oneHandler(e) {
 
   if (type === 'click') {
     // Anywhere other than the calendar - close the calendar.
-    if (!instance) return datepickers.forEach(hideCal)
+    datepickers.forEach(function(picker) {
+      if (picker !== instance) hideCal(picker)
+    })
 
-    // Do nothing for disabled calendars.
-    if (instance.disabled) return
+    // Do nothing for disabled calendars or events .
+    if (!instance || instance.disabled) return
 
     var calendar = instance.calendar
     var calendarContainer = instance.calendarContainer
