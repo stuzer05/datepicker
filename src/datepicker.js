@@ -163,17 +163,25 @@ function createInstance(selector, opts) {
   if (!el) throw 'No selector / element found.'
 
   var options = sanitizeOptions(opts || defaults(), el)
-  var noPosition = el === document.body
-  var parent = noPosition ? document.body : el.parentElement
+
+  /*
+    `noPosition` - indicates that the calendar isn't positioned relative to anything,
+    such as the usual case of an <input>. This will prevent adding any conditional styles
+    to the parent element of `el`, which are needed when we want to accurately position
+    the calendar.
+  */
+  var noPosition = el === document.body || (shadowDom && !el.parentElement)
+  var parent = noPosition ? (shadowDom || document.body) : el.parentElement
   var calendarContainer = document.createElement('div')
   var calendar = document.createElement('div')
 
-  // The calendar scales relative to the font-size of the container.
-  // The user can provide a class name that sets font-size, or a theme perhaps.
-  // thereby controlling the overall size and look of the calendar.
+  /*
+    The calendar scales relative to the font-size of the container.
+    The user can provide a class name that sets font-size, or a theme perhaps,
+    thereby controlling the overall size and look of the calendar.
+  */
   calendarContainer.className = 'qs-datepicker-container qs-hidden'
   calendar.className = 'qs-datepicker'
-
 
   var instance = {
     // For instances that are attached to a shadow DOM, keep track of their root.
@@ -365,7 +373,7 @@ function createInstance(selector, opts) {
   if (options.dateSelected) setCalendarInputValue(el, instance)
 
   // Add any needed styles to the parent element.
-  var computedPosition = getComputedStyle(parent).position
+  var computedPosition = !noPosition && getComputedStyle(parent).position
 
   if (!noPosition && (!computedPosition || computedPosition === 'static')) {
     // Indicate that the parent inline styles for position have been set.
@@ -1114,6 +1122,16 @@ function overlayYearEntry(e, input, instance, overlayMonthIndex) {
   }
 }
 
+/*
+ *  Takes in an datepicker instance and hides
+ *  all other pickers besides the one passed in.
+ */
+function hideOtherPickers(instance) {
+  datepickers.forEach(function(picker) {
+    if (picker !== instance) hideCal(picker)
+  })
+}
+
 
 ///////////////////
 // EVENT HANDLER //
@@ -1128,7 +1146,7 @@ function oneHandler(e) {
   /*
     This property is set in `applyListeners`. Explanation can be found there.
     Basically, if this property was true, the even originated from the
-    shadow DOM and was already handled previously by the listeners there,
+    shadow DOM and was already handled previously by the listeners there.
   */
   if (e.__qs_is_shadow_dom) return
 
@@ -1136,7 +1154,7 @@ function oneHandler(e) {
   var target = e.target
   var classList = target.classList
   var instance = datepickers.filter(function(picker) {
-    return picker.calendar.contains(target) || picker.el === target
+   return picker.calendar.contains(target) || picker.el === target
   })[0]
   var onCal = instance && instance.calendar.contains(target)
 
@@ -1150,9 +1168,7 @@ function oneHandler(e) {
 
   if (type === 'click') {
     // Anywhere other than the calendar - close the calendar.
-    datepickers.forEach(function(picker) {
-      if (picker !== instance) hideCal(picker)
-    })
+    hideOtherPickers(instance)
 
     // Do nothing for disabled calendars or events .
     if (!instance || instance.disabled) return
@@ -1166,9 +1182,11 @@ function oneHandler(e) {
     var monthYearClicked = calendar.querySelector('.qs-month-year').contains(target)
     var newMonthIndex = target.dataset.monthNum
 
-    // Calendar's el is 'body'.
-    // Anything but the calendar was clicked.
-    if (instance.noPosition && !onCal) {
+    /*
+      Calendar's el is 'body'. Anything but the calendar was clicked.
+      Don't do this for calendars with a shadow DOM.
+    */
+    if (instance.noPosition && !onCal && !instance.shadowDom) {
       // Show / hide a calendar whose el is html or body.
       var calendarClosed = calendarContainer.classList.contains('qs-hidden')
       ;(calendarClosed ? showCal : hideCal)(instance)
@@ -1177,8 +1195,10 @@ function oneHandler(e) {
     } else if (classList.contains('qs-arrow')) {
       changeMonthYear(classList, instance)
 
-    // Clicking the month/year - open the overlay.
-    // Clicking the X on the overlay - close the overlay.
+    /*
+      Clicking the month/year - open the overlay.
+      Clicking the X on the overlay - close the overlay.
+    */
     } else if (monthYearClicked || classList.contains('qs-close')) {
       if (!disableYearOverlay) toggleOverlay(!overlayClosed, instance)
 
@@ -1215,7 +1235,7 @@ function oneHandler(e) {
     showCal(instance)
 
     // Hide all other instances.
-    datepickers.forEach(function(picker) { if (picker !== instance) hideCal(picker) })
+    hideOtherPickers(instance)
   } else if (type === 'keydown' && instance && !instance.disabled) {
     var overlay = instance.calendar.querySelector('.qs-overlay')
     var overlayShowing = !overlay.classList.contains('qs-hidden')
@@ -1555,7 +1575,7 @@ function remove() {
   }
 
   // Decide wether to remove the event handlers from the shadow DOM.
-  if (!pickersOnParticularShadowDom.length) {
+  if (hasShadowDom && !pickersOnParticularShadowDom.length) {
     removeHandlers(shadowDom)
   }
 
