@@ -72,7 +72,7 @@ function datepicker(selector, options) {
       return picker.shadowDom === instance.shadowDom
     })
 
-    if (!shadowDomInUse) applyListeners(instance.shadowDom, true)
+    if (!shadowDomInUse) applyListeners(instance.shadowDom)
   }
 
   // Keep track of all our instances in an array.
@@ -111,21 +111,9 @@ function datepicker(selector, options) {
  *  The goal is to ever only apply listeners once regardless
  *  of how many datepicker instances have been initialized.
  */
-function applyListeners(root, isShadowDom) {
+function applyListeners(root) {
   events.forEach(function(eventName) {
-    root.addEventListener(eventName, function(e) {
-      /*
-        In the case of a shadow DOM, the listeners will be triggered on
-        the shadow DOM first, then again on the document. In that case,
-        we want the first run on the shadow DOM to go normally but we want
-        the second run on the document to be ignored. To achieve this, we
-        set a flag on the event object AFTER the initial run so that when
-        these events finally bubble to the document and trigger the listeners
-        a second time, we have the property to tell them to do nothing.
-      */
-      oneHandler(e)
-      if (isShadowDom) e.__qs_is_shadow_dom = true
-    })
+    root.addEventListener(eventName, oneHandler)
   })
 }
 
@@ -144,7 +132,7 @@ function createInstance(selector, opts) {
   */
   if (opts && opts.shadowDom) {
     if (type(opts.shadowDom) !== '[object ShadowRoot]') {
-      throw '"options.shadowRoot" must be a shadow DOM.'
+      throw '"options.shadowDom" must be a shadow DOM.'
     } else {
       root = shadowDom = opts.shadowDom
     }
@@ -427,7 +415,7 @@ function freshCopy(item) {
  *  Returns an options object if everything checks out.
  */
 function sanitizeOptions(opts, el) {
-    // Check if the provided element already has a datepicker attached.
+  // Check if the provided element already has a datepicker attached.
   if (datepickers.some(function(picker) { return picker.el === el })) throw 'A datepicker already exists on that element.'
 
   // Avoid mutating the original object that was supplied by the user.
@@ -1143,18 +1131,26 @@ function hideOtherPickers(instance) {
  *  all datepicker instances have had their `remove` method called.
  */
 function oneHandler(e) {
-  /*
-    This property is set in `applyListeners`. Explanation can be found there.
-    Basically, if this property was true, the even originated from the
-    shadow DOM and was already handled previously by the listeners there.
-  */
+  // Ignore this handler if it bubbled up from a shadow DOM.
   if (e.__qs_is_shadow_dom) return
+
+  /*
+    In the case of a shadow DOM, the listeners will be triggered on
+    the shadow DOM first, then again on the document. In that case,
+    we want the first run on the shadow DOM to go normally but we want
+    the second run on the document to be ignored. To achieve this, we
+    set a flag on the event object AFTER the initial run so that when
+    these events finally bubble to the document and trigger the listeners
+    a second time, we have the property to tell them to do nothing.
+  */
+  var isShadowDom = type(e.currentTarget) === '[object ShadowRoot]'
+  if (isShadowDom) e.__qs_is_shadow_dom = true
 
   var type = e.type
   var target = e.target
   var classList = target.classList
   var instance = datepickers.filter(function(picker) {
-   return picker.calendar.contains(target) || picker.el === target
+    return picker.calendar.contains(target) || picker.el === target
   })[0]
   var onCal = instance && instance.calendar.contains(target)
 

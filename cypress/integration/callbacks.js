@@ -1,19 +1,17 @@
 describe('Callback functions', () => {
   let dp
-
-  before(() => {
-    cy.visit('http://localhost:9001')
-    cy.window().then(win => {
-      dp = win.dp
-    })
-  })
+  let picker
 
   describe('Single instance callbacks', () => {
     describe('onSelect', () => {
       let onSelect
-      let picker
 
-      after(() => picker.remove())
+      before(() => {
+        cy.visit('http://localhost:9001')
+        cy.window().then(win => {
+          dp = win.dp
+        })
+      })
 
       it('should run the provided callback function after selecting a date', () => {
         onSelect = cy.stub()
@@ -57,9 +55,13 @@ describe('Callback functions', () => {
 
     describe('onShow', () => {
       let onShow
-      let picker
 
-      after(() => picker.remove())
+      before(() => {
+        cy.visit('http://localhost:9001')
+        cy.window().then(win => {
+          dp = win.dp
+        })
+      })
 
       it('should run when the calendar is shown', () => {
         onShow = cy.stub()
@@ -90,9 +92,13 @@ describe('Callback functions', () => {
 
     describe('onHide', () => {
       let onHide
-      let picker
 
-      after(() => picker.remove())
+      before(() => {
+        cy.visit('http://localhost:9001')
+        cy.window().then(win => {
+          dp = win.dp
+        })
+      })
 
       it('should not run when the calendar is shown', () => {
         onHide = cy.stub()
@@ -125,10 +131,13 @@ describe('Callback functions', () => {
 
     describe('onMonthChange', () => {
       let onMonthChange
-      let picker
 
-      before(() => cy.get('body').click())
-      after(() => picker.remove())
+      before(() => {
+        cy.visit('http://localhost:9001')
+        cy.window().then(win => {
+          dp = win.dp
+        })
+      })
 
       it('should run when the month arrows are used to change the month', () => {
         onMonthChange = cy.stub()
@@ -159,15 +168,18 @@ describe('Callback functions', () => {
   })
 
   describe('Daterange callbacks', () => {
+    let picker1
+    let picker2
+
     describe('onSelect', () => {
-      let picker1
-      let picker2
       let onSelect1
       let onSelect2
 
-      after(() => {
-        picker1.remove()
-        picker2.remove()
+      before(() => {
+        cy.visit('http://localhost:9001')
+        cy.window().then(win => {
+          dp = win.dp
+        })
       })
 
       it('should run the provided callback function from the correct calendar after selecting a date', () => {
@@ -221,14 +233,14 @@ describe('Callback functions', () => {
     })
 
     describe('onShow', () => {
-      let picker1
-      let picker2
       let onShow1
       let onShow2
 
-      after(() => {
-        picker1.remove()
-        picker2.remove()
+      before(() => {
+        cy.visit('http://localhost:9001')
+        cy.window().then(win => {
+          dp = win.dp
+        })
       })
 
       it('should run the provided callback function from the correct calendar after showing the calendar', () => {
@@ -271,14 +283,14 @@ describe('Callback functions', () => {
     })
 
     describe('onHide', () => {
-      let picker1
-      let picker2
       let onHide1
       let onHide2
 
-      after(() => {
-        picker1.remove()
-        picker2.remove()
+      before(() => {
+        cy.visit('http://localhost:9001')
+        cy.window().then(win => {
+          dp = win.dp
+        })
       })
 
       it('should run the provided callback function from the correct calendar after hiding the calendar', () => {
@@ -327,14 +339,14 @@ describe('Callback functions', () => {
     })
 
     describe('onMonthChange', () => {
-      let picker1
-      let picker2
       let onMonthChange1
       let onMonthChange2
 
-      after(() => {
-        picker1.remove()
-        picker2.remove()
+      before(() => {
+        cy.visit('http://localhost:9001')
+        cy.window().then(win => {
+          dp = win.dp
+        })
       })
 
       it('should run the provided callback function from the correct calendar after changing the month', () => {
