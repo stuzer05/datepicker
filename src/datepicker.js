@@ -240,6 +240,9 @@ function createInstance(selector, opts) {
     // Start day of the week - indexed from `days` above.
     startDay: options.startDay,
 
+    // Start the calendar with the overlay (year & months) open.
+    startWithOverlay: !!options.startWithOverlay,
+
     // Custom overlay months.
     overlayMonths: options.overlayMonths || (options.months || months).map(function(m) { return m.slice(0, 3) }),
 
@@ -566,28 +569,17 @@ function establishPosition(positions) {
  *  Populates `calendar.innerHTML` with the contents of the calendar controls, month, and overlay.
  *  This method does NOT *show* the calendar on the screen. It only affects the html structure.
  */
-function renderCalendar(instance, date) {
-  var overlay = instance.calendar.querySelector('.qs-overlay')
-  var overlayOpen = overlay && !overlay.classList.contains('qs-hidden')
+function renderCalendar(instance, date, renderWithOverlayOpen) {
+  var shouldRenderOverlay = renderWithOverlayOpen != null ? renderWithOverlayOpen : instance.startWithOverlay
 
   // Default to rendering the current month. This is helpful for re-renders.
   date = date || new Date(instance.currentYear, instance.currentMonth)
 
   instance.calendar.innerHTML = [
-    createControls(date, instance, overlayOpen),
-    createMonth(date, instance, overlayOpen),
-    createOverlay(instance, overlayOpen)
+    createControls(date, instance, shouldRenderOverlay),
+    createMonth(date, instance, shouldRenderOverlay),
+    createOverlay(instance, shouldRenderOverlay)
   ].join('')
-
-  /*
-    When the overlay is open and we submit a year (or click a month), the calendar's
-    html is recreated here. To make the overlay fade out the same way it faded in,
-    we need to create it with the appropriate classes (triggered by `overlayOpen`),
-    then wait for the next repaint, triggering a fade out.
-
-    Good for IE >= 10.
-  */
- if (overlayOpen) window.requestAnimationFrame(function() { toggleOveraly(true, instance) })
 }
 
 /*
@@ -743,12 +735,6 @@ function createMonth(date, instance, overlayOpen) {
     .map(function(day) { return '<div class="qs-square qs-day">' + day + '</div>' })
     .concat(calendarSquares)
 
-  // Throw error...
-  // The # of squares on the calendar should ALWAYS be a multiple of 7.
-  if (daysAndSquares.length % 7 !== 0 ) {
-    throw 'Calendar not constructed properly. The # of squares should be a multiple of 7.'
-  }
-
   // Wrap it all in a tidy div.
   daysAndSquares.unshift('<div class="qs-squares' + (overlayOpen ? ' qs-blur' : '') + '">')
   daysAndSquares.push('</div>')
@@ -833,7 +819,7 @@ function selectDay(target, instance, deselect) {
     }
 
     // Re-render both calendars.
-    renderCalendar(instance)
+    renderCalendar(instance, null, false)
     renderCalendar(sibling)
   }
 
@@ -892,12 +878,14 @@ function setCalendarInputValue(el, instance, deselect) {
  *  Calls `renderCalendar` with the updated date.
  */
 function changeMonthYear(classList, instance, year, overlayMonthIndex) {
-  // Overlay.
-  if (year || overlayMonthIndex) {
+  var fromOverlay = !!(year || overlayMonthIndex)
+
+  // From the overlay.
+  if (fromOverlay) {
     if (year) instance.currentYear = +year
     if (overlayMonthIndex) instance.currentMonth = +overlayMonthIndex
 
-  // Month change.
+  // Month change - from clicking the arrow buttons.
   } else {
     instance.currentMonth += classList.contains('qs-right') ? 1 : -1
 
@@ -913,7 +901,20 @@ function changeMonthYear(classList, instance, year, overlayMonthIndex) {
 
   instance.currentMonthName = instance.months[instance.currentMonth]
 
-  renderCalendar(instance)
+  /*
+    3rd argument here means to render the calendar's HTML with the overlay open or not.
+    true - render with overlay closed.
+    false - render with overlay open.
+
+    So for use here, if this fxn is triggered from the overlay, we want this value to be false,
+    keeping the overlay open. We'll close it manually with `toggleOverlay` below.
+  */
+  renderCalendar(instance, null, fromOverlay)
+
+  // Manually close the overlay after the calendar's HTML has been updated above.
+  if (fromOverlay) toggleOverlay(true, instance)
+
+  // Callback.
   instance.onMonthChange(instance)
 }
 
@@ -982,7 +983,7 @@ function hideCal(instance) {
   var isShowing = !instance.calendarContainer.classList.contains('qs-hidden')
 
   if (isShowing && !instance.alwaysShow) {
-    toggleOverlay(true, instance)
+    toggleOverlay(!instance.startWithOverlay, instance)
     instance.calendarContainer.classList.add('qs-hidden')
     instance.onHide(instance)
   }
@@ -1010,24 +1011,31 @@ function toggleOverlay(closing, instance) {
   */
 
   var calendar = instance.calendar
-  if (!calendar) return
-
   var overlay = calendar.querySelector('.qs-overlay')
   var yearInput = overlay.querySelector('.qs-overlay-year')
   var controls = calendar.querySelector('.qs-controls')
   var squaresContainer = calendar.querySelector('.qs-squares')
 
-  if (closing) {
-    overlay.classList.add('qs-hidden')
-    controls.classList.remove('qs-blur')
-    squaresContainer.classList.remove('qs-blur')
-    yearInput.value = ''
-  } else {
-    overlay.classList.remove('qs-hidden')
-    controls.classList.add('qs-blur')
-    squaresContainer.classList.add('qs-blur')
-    yearInput.focus()
-  }
+  /*
+    Using requestAnimationFrame to give the browser time to first paint
+    the calendar so that when we toggle the css classes, we're able to
+    trigger the transitions that occur.
+
+    Good for IE >= 10.
+  */
+  self.requestAnimationFrame(function() {
+    if (closing) {
+      overlay.classList.add('qs-hidden')
+      controls.classList.remove('qs-blur')
+      squaresContainer.classList.remove('qs-blur')
+      yearInput.value = ''
+    } else {
+      overlay.classList.remove('qs-hidden')
+      controls.classList.add('qs-blur')
+      squaresContainer.classList.add('qs-blur')
+      yearInput.focus()
+    }
+  })
 }
 
 /*
@@ -1042,9 +1050,7 @@ function overlayYearEntry(e, input, instance, overlayMonthIndex) {
 
   // Enter has been pressed OR submit was clicked.
   if ((e.which || e.keyCode) === 13 || e.type === 'click') {
-    if (overlayMonthIndex) {
-      changeMonthYear(null, instance, value, overlayMonthIndex)
-    } else if (!badDate && !input.classList.contains('qs-disabled')) {
+    if (overlayMonthIndex || (!badDate && !input.classList.contains('qs-disabled'))) {
       changeMonthYear(null, instance, value, overlayMonthIndex)
     }
 
@@ -1053,6 +1059,13 @@ function overlayYearEntry(e, input, instance, overlayMonthIndex) {
     var submit = instance.calendar.querySelector('.qs-submit')
     submit.classList[badDate ? 'add' : 'remove']('qs-disabled')
   }
+}
+
+/*
+ *  Helper function to determine if an instance's overlay is showing.
+ */
+function isOverlayShowing(instance) {
+  return !instance.calendar.querySelector('.qs-overlay').classList.contains('qs-hidden')
 }
 
 
@@ -1152,8 +1165,7 @@ function oneHandler(e) {
     // Hide all other instances.
     datepickers.forEach(function(picker) { if (picker !== instance) hideCal(picker) })
   } else if (type === 'keydown' && instance && !instance.disabled) {
-    var overlay = instance.calendar.querySelector('.qs-overlay')
-    var overlayShowing = !overlay.classList.contains('qs-hidden')
+    var overlayShowing = isOverlayShowing(instance)
 
     // Pressing enter while the overlay is open.
     if ((e.which || e.keyCode) === 13 && overlayShowing && onCal) {
@@ -1213,6 +1225,8 @@ function setDate(newDate, changeCalendar) {
   var currentYear = this.currentYear
   var currentMonth = this.currentMonth
   var sibling = this.sibling
+  var overlayShowing = isOverlayShowing(this)
+  var siblingOverlayShowing = sibling && isOverlayShowing(sibling)
 
   // Removing the selected date.
   if (newDate == null) {
@@ -1225,11 +1239,11 @@ function setDate(newDate, changeCalendar) {
     // Daterange processing!
     if (sibling) {
       adjustDateranges({ instance: this, deselect: true })
-      renderCalendar(sibling)
+      renderCalendar(sibling, null, siblingOverlayShowing)
     }
 
     // Re-render the calendar to clear the selected date.
-    renderCalendar(this)
+    renderCalendar(this, null, overlayShowing)
 
     // Return the instance to enable chaining methods.
     return this
@@ -1272,11 +1286,11 @@ function setDate(newDate, changeCalendar) {
     adjustDateranges({ instance: this })
 
     // Re-render the sibling to reflect possible disabled dates due to a selection.
-    renderCalendar(sibling)
+    renderCalendar(sibling, null, siblingOverlayShowing)
   }
 
   var isSameMonth = currentYear === date.getFullYear() && currentMonth === date.getMonth()
-  if (isSameMonth || changeCalendar) renderCalendar(this, date)
+  if (isSameMonth || changeCalendar) renderCalendar(this, date, overlayShowing)
 
   return this
 }
@@ -1306,6 +1320,8 @@ function changeMinOrMax(instance, date, isMin) {
   var maxDate = instance.maxDate
   var newDate = stripTime(date)
   var type = isMin ? 'Min' : 'Max'
+  var overlayShowing = isOverlayShowing(instance)
+  var siblingOverlayShowing = sibling && isOverlayShowing(sibling)
 
   function origProp() { return 'original' + type + 'Date' }
   function prop() { return type.toLowerCase() + 'Date' }
@@ -1405,8 +1421,8 @@ function changeMinOrMax(instance, date, isMin) {
     instance[prop()] = newDate
   }
 
-  if (sibling) renderCalendar(sibling)
-  renderCalendar(instance)
+  if (sibling) renderCalendar(sibling, null, siblingOverlayShowing)
+  renderCalendar(instance, null, overlayShowing)
 
   return instance
 }
