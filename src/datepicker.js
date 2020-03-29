@@ -1006,14 +1006,6 @@ function toggleOverlay(closing, instance) {
     .qs-squares  - The container for all the squares making up the grid of the calendar.
   */
 
-
-  /*
-    This function is called within a `setTimeout` inside `renderCalendar`.
-    What if `.remove()` was called within that time span? There would be no properties on
-    instance anymore since `.remove()` removes them all. Return here to avoid errors.
-    This is highly unlikely to happen, but in case the instances are tied to other functions
-    in the users program, and perhaps those functions remove the calendar, avoid errors here.
-  */
   var calendar = instance.calendar
   if (!calendar) return
 
