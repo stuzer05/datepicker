@@ -75,7 +75,7 @@ function datepicker(selector, options) {
   }
 
   renderCalendar(instance, instance.startDate || instance.dateSelected)
-  if (instance.alwaysShow) calculatePosition(instance)
+  if (instance.alwaysShow) showCal(instance)
 
   return instance
 }
@@ -344,9 +344,6 @@ function createInstance(selector, opts) {
   calendarContainer.appendChild(calendar)
   parent.appendChild(calendarContainer)
 
-  // Conditionally show the calendar.
-  if (instance.alwaysShow) showCal(instance)
-
   return instance
 }
 
@@ -583,9 +580,11 @@ function renderCalendar(instance, date) {
     When the overlay is open and we submit a year (or click a month), the calendar's
     html is recreated here. To make the overlay fade out the same way it faded in,
     we need to create it with the appropriate classes (triggered by `overlayOpen`),
-    and then wait 10ms to take those classes back off, triggering a fade out.
+    then wait for the next repaint, triggering a fade out.
+
+    Good for IE >= 10.
   */
-  if (overlayOpen) setTimeout(function() { toggleOverlay(true, instance) }, 10)
+ if (overlayOpen) window.requestAnimationFrame(function() { toggleOveraly(true, instance) })
 }
 
 /*
