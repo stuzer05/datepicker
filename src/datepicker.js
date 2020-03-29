@@ -74,7 +74,14 @@ function datepicker(selector, options) {
     renderCalendar(first)
   }
 
+  // Put our instance's container in the DOM.
+  instance.calendarContainer.appendChild(instance.calendar)
+  instance.parent.appendChild(instance.calendarContainer)
+
+  // Render the calendar HTML in its container, in the DOM.
   renderCalendar(instance, instance.startDate || instance.dateSelected)
+
+  // Conditionally show the calendar immediately upon creation.
   if (instance.alwaysShow) showCal(instance)
 
   return instance
@@ -339,10 +346,6 @@ function createInstance(selector, opts) {
 
   // Keep track of all our instances in an array.
   datepickers.push(instance)
-
-  // Put our instance's calendar in the DOM.
-  calendarContainer.appendChild(calendar)
-  parent.appendChild(calendarContainer)
 
   return instance
 }
