@@ -405,6 +405,9 @@ function createInstance(selectorOrElement, opts) {
     rangeStopDate: options.rangeStopDate ? options.rangeStopDate : new Date(),
     rangeNowSelecting: 0,
     getRangeSingle: getRangeSingle,
+
+    // Allows to reset selected calender dates
+    reset: reset,
   }
 
   /*
@@ -1838,6 +1841,16 @@ function remove() {
   if (!datepickers.length) {
     events.forEach(function(event) { document.removeEventListener(event, oneHandler) })
   }
+}
+
+function reset() {
+  this.dateSelected = new Date();
+  this.rangeStartDate = this.dateSelected;
+  this.rangeStopDate = this.dateSelected;
+
+  setCalendarInputValue(this.el, this)
+
+  renderCalendar(this);
 }
 
 /*
