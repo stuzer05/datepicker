@@ -72,6 +72,7 @@ function datepicker(selectorOrElement, options) {
     When we encounted the 2nd in a pair, we need run both through `adjustDateranges`
     to handle the min & max settings, and we need to re-render the 1st.
   */
+  // @here
   if (instance.second) {
     var first = instance.sibling
 
@@ -81,6 +82,11 @@ function datepicker(selectorOrElement, options) {
 
     // Re-render the first daterange instance - the 2nd will be rendered below.
     renderCalendar(first)
+  } else if (instance.rangeSize) {
+    adjustDaterange({ instance: instance, deselect: !instance.dateSelected })
+    // @mycode
+    // instance.minDate = instance.originalMinDate
+    // instance.maxDate = instance.originalMaxDate
   }
 
   renderCalendar(instance, instance.startDate || instance.dateSelected)
@@ -302,8 +308,6 @@ function createInstance(selectorOrElement, opts) {
     // Events will show a small circle on calendar days.
     events: options.events || {},
 
-
-
     // Method to programmatically set the calendar's date.
     setDate: setDate,
 
@@ -393,7 +397,14 @@ function createInstance(selectorOrElement, opts) {
     first: options.first,
 
     // Indicates this is the 2nd instance in a daterange pair.
-    second: options.second
+    second: options.second,
+
+    // Allows to control date range (workds with a single calendar instance)
+    rangeSize: options.rangeSize,
+    rangeStartDate: options.rangeStartDate ? options.rangeStartDate : new Date(),
+    rangeStopDate: options.rangeStopDate ? options.rangeStopDate : new Date(),
+    rangeNowSelecting: 0,
+    getRangeSingle: getRangeSingle,
   }
 
   /*
@@ -759,7 +770,12 @@ function createMonth(date, instance, overlayOpen) {
   var events = instance.events
 
   // If we have a daterange picker, get the current range.
-  var range = instance.getRange ? instance.getRange() : {}
+  var range = {};
+  if (instance.rangeSize) {
+    range = instance.getRangeSingle ? instance.getRangeSingle() : {}
+  } else {
+    range = instance.getRange ? instance.getRange() : {}
+  }
   var start = +range.start
   var end = +range.end
 
@@ -787,7 +803,7 @@ function createMonth(date, instance, overlayOpen) {
 
   // Fancy calculations for the total # of squares.
   // The pipe operator truncates any decimals.
-  var totalSquares = precedingRow + (((offset + daysInMonth) / 7 | 0) * 7)
+  var totalSquares = precedingRow + (((offset + daysInMonth) / 7 | 0) * 7) // @todo range total is set
   totalSquares += (offset + daysInMonth) % 7 ? 7 : 0
 
   /*
@@ -936,16 +952,10 @@ function selectDay(target, instance, deselect) {
   if (!deselect) target.classList.add('qs-active')
 
   /*
-    Populate the <input> field (or not) with a readable value
-    and store the individual date values as attributes.
-  */
-  setCalendarInputValue(el, instance, deselect)
-
-  /*
     Hide the calendar after a day has been selected.
     Keep it showing if deselecting.
   */
-  if (!deselect) hideCal(instance)
+  if (!deselect && !instance.rangeSize) hideCal(instance)
 
   if (sibling) {
     // Update minDate & maxDate of both calendars.
@@ -967,13 +977,115 @@ function selectDay(target, instance, deselect) {
     // Re-render both calendars.
     renderCalendar(instance)
     renderCalendar(sibling)
+  } else if (instance.rangeSize) {
+    function dateDiffInDays(a, b) {
+      const _MS_PER_DAY = 1000 * 60 * 60 * 24;
+
+      // Discard the time and time-zone information.
+      const utc1 = Date.UTC(a.getFullYear(), a.getMonth(), a.getDate());
+      const utc2 = Date.UTC(b.getFullYear(), b.getMonth(), b.getDate());
+
+      return Math.floor((utc2 - utc1) / _MS_PER_DAY);
+    }
+    function dateClosestOfTwo(ref, a, b) {
+      if (Math.abs(dateDiffInDays(ref, a)) < Math.abs(dateDiffInDays(ref, b))) {
+        return a;
+      } else {
+        return b;
+      }
+    }
+    function dateReset(instance) {
+      instance.rangeStartDate = instance.dateSelected;
+      instance.rangeStopDate = instance.dateSelected;
+    }
+
+    if (instance.rangeNowSelecting == 0) { // first date
+      instance.rangeNowSelecting = 1;
+      // console.log('mode -> 0')
+
+      let diffInDays = dateDiffInDays(dateClosestOfTwo(instance.dateSelected, instance.rangeStartDate, instance.rangeStopDate), instance.dateSelected);
+      let diffInDaysAbs = Math.abs(diffInDays);
+      if (diffInDaysAbs >= instance.rangeSize) {
+        // console.log('diffInDaysAbs >= instance.rangeSize -> ', diffInDaysAbs, ' >= ', instance.rangeSize);
+        dateReset(instance);
+      } else {
+        // console.log('diffInDaysAbs < instance.rangeSize -> ', diffInDays, ' < ', instance.rangeSize);
+
+        if (diffInDays < 0) {
+          instance.rangeStopDate = instance.rangeStartDate;
+          instance.rangeStartDate = instance.dateSelected;
+        } else {
+          instance.rangeStartDate = instance.dateSelected;
+        }
+        // console.log(instance.rangeStartDate, instance.rangeStopDate);
+
+        if (instance.rangeStartDate > instance.rangeStopDate) {
+          let tmp = instance.rangeStopDate;
+          instance.rangeStopDate = instance.rangeStartDate;
+          instance.rangeStartDate = tmp;
+          instance.rangeNowSelecting = 0;
+        }
+
+        // ???
+        diffInDays = dateDiffInDays(instance.rangeStartDate, instance.rangeStopDate);
+        diffInDaysAbs = Math.abs(diffInDays);
+        if (diffInDaysAbs >= instance.rangeSize ) {
+          dateReset(instance);
+        }
+      }
+    } else if (instance.rangeNowSelecting == 1) { // second date
+      instance.rangeNowSelecting = 0;
+      // console.log('mode -> 1')
+
+      let diffInDays = dateDiffInDays(dateClosestOfTwo(instance.dateSelected, instance.rangeStartDate, instance.rangeStopDate), instance.dateSelected);
+      let diffInDaysAbs = Math.abs(diffInDays);
+      if (diffInDaysAbs >= instance.rangeSize ) {
+        // console.log('diffInDaysAbs >= instance.rangeSize -> ', diffInDaysAbs, ' >= ', instance.rangeSize);
+        dateReset(instance);
+      } else {
+        // console.log('diffInDaysAbs < instance.rangeSize -> ', diffInDays, ' < ', instance.rangeSize);
+        if (diffInDays > 0) {
+          instance.rangeStopDate = instance.dateSelected;
+        } else {
+          instance.rangeStartDate = instance.rangeStopDate;
+          instance.rangeStopDate = instance.dateSelected;
+        }
+        // console.log(instance.rangeStartDate, instance.rangeStopDate);
+
+        if (instance.rangeStopDate < instance.rangeStartDate) {
+          let tmp = instance.rangeStartDate;
+          instance.rangeStartDate = instance.rangeStopDate;
+          instance.rangeStopDate = tmp;
+          instance.rangeNowSelecting = 1;
+        }
+
+        // ???
+        diffInDays = dateDiffInDays(instance.rangeStartDate, instance.rangeStopDate);
+        diffInDaysAbs = Math.abs(diffInDays);
+        if (diffInDaysAbs >= instance.rangeSize ) {
+          dateReset(instance);
+        }
+      }
+    }
+
+    /*
+      Populate the <input> field (or not) with a readable value
+      and store the individual date values as attributes.
+    */
+    setCalendarInputValue(el, instance, deselect)
+
+    renderCalendar(instance);
   }
 
 
   // Call the user-provided `onSelect` callback.
   // Passing in new date so there's no chance of mutating the original object.
   // In the case of a daterange, min & max dates are automatically set.
-  instance.onSelect(instance, deselect ? undefined : new Date(instance.dateSelected))
+  if (instance.rangeSize) {
+    instance.onSelect(instance, deselect ? undefined : instance.getRangeSingle)
+  } else {
+    instance.onSelect(instance, deselect ? undefined : new Date(instance.dateSelected))
+  }
 }
 
 /*
@@ -1000,6 +1112,19 @@ function adjustDateranges(args) {
     }
   }
 }
+function adjustDaterange(args) {
+  var first = args.instance
+
+  if (first === args.instance) {
+    if (args.deselect) {
+      first.minDate = first.originalMinDate
+      first.maxDate = first.originalMaxDate
+    } else {
+      first.minDate = first.dateSelected
+      first.maxDate = first.dateSelected
+    }
+  }
+}
 
 /*
  *  Populates the <input> fields with a readable value
@@ -1008,7 +1133,13 @@ function adjustDateranges(args) {
 function setCalendarInputValue(el, instance, deselect) {
   if (instance.nonInput) return
   if (deselect) return el.value = ''
-  if (instance.formatter !== noop) return instance.formatter(el, instance.dateSelected, instance)
+  if (instance.formatter !== noop) {
+    if (instance.rangeSize) {
+      return instance.formatter(el, instance.getRangeSingle(), instance)
+    } else {
+      return instance.formatter(el, instance.dateSelected, instance)
+    }
+  }
   el.value = instance.dateSelected.toDateString()
 }
 
@@ -1654,6 +1785,12 @@ function getRange() {
   return {
     start: first.dateSelected,
     end: second.dateSelected
+  }
+}
+function getRangeSingle() {
+  return {
+    start: this.rangeStartDate,
+    end: this.rangeStopDate
   }
 }
 
