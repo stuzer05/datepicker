@@ -775,10 +775,18 @@ function createMonth(date, instance, overlayOpen) {
   // If we have a daterange picker, get the current range.
   var range = {};
   if (instance.rangeSize) {
-    range = instance.getRangeSingle ? instance.getRangeSingle() : {}
+    let tmp_range = instance.getRangeSingle ? instance.getRangeSingle() : {}
+
+    if (tmp_range.start > tmp_range.end) {
+      range.start = tmp_range.end
+      range.end = tmp_range.start;
+    } else {
+      range = tmp_range;
+    }
   } else {
     range = instance.getRange ? instance.getRange() : {}
   }
+
   var start = +range.start
   var end = +range.end
 
@@ -998,77 +1006,24 @@ function selectDay(target, instance, deselect) {
       }
     }
     function dateReset(instance) {
+      instance.rangeNowSelecting = 0;
+
       instance.rangeStartDate = instance.dateSelected;
       instance.rangeStopDate = instance.dateSelected;
     }
 
-    if (instance.rangeNowSelecting == 0) { // first date
+    let diffInDays = dateDiffInDays(instance.rangeStartDate, instance.dateSelected);
+    let diffInDaysAbs = Math.abs(diffInDays);
+    if (diffInDaysAbs >= instance.rangeSize ) {
+      dateReset(instance);
+    }
+
+    if (instance.rangeNowSelecting == 0) {
       instance.rangeNowSelecting = 1;
-      // console.log('mode -> 0')
 
-      let diffInDays = dateDiffInDays(dateClosestOfTwo(instance.dateSelected, instance.rangeStartDate, instance.rangeStopDate), instance.dateSelected);
-      let diffInDaysAbs = Math.abs(diffInDays);
-      if (diffInDaysAbs >= instance.rangeSize) {
-        // console.log('diffInDaysAbs >= instance.rangeSize -> ', diffInDaysAbs, ' >= ', instance.rangeSize);
-        dateReset(instance);
-      } else {
-        // console.log('diffInDaysAbs < instance.rangeSize -> ', diffInDays, ' < ', instance.rangeSize);
-
-        if (diffInDays < 0) {
-          instance.rangeStopDate = instance.rangeStartDate;
-          instance.rangeStartDate = instance.dateSelected;
-        } else {
-          instance.rangeStartDate = instance.dateSelected;
-        }
-        // console.log(instance.rangeStartDate, instance.rangeStopDate);
-
-        if (instance.rangeStartDate > instance.rangeStopDate) {
-          let tmp = instance.rangeStopDate;
-          instance.rangeStopDate = instance.rangeStartDate;
-          instance.rangeStartDate = tmp;
-          instance.rangeNowSelecting = 0;
-        }
-
-        // ???
-        diffInDays = dateDiffInDays(instance.rangeStartDate, instance.rangeStopDate);
-        diffInDaysAbs = Math.abs(diffInDays);
-        if (diffInDaysAbs >= instance.rangeSize ) {
-          dateReset(instance);
-        }
-      }
-    } else if (instance.rangeNowSelecting == 1) { // second date
-      instance.rangeNowSelecting = 0;
-      // console.log('mode -> 1')
-
-      let diffInDays = dateDiffInDays(dateClosestOfTwo(instance.dateSelected, instance.rangeStartDate, instance.rangeStopDate), instance.dateSelected);
-      let diffInDaysAbs = Math.abs(diffInDays);
-      if (diffInDaysAbs >= instance.rangeSize ) {
-        // console.log('diffInDaysAbs >= instance.rangeSize -> ', diffInDaysAbs, ' >= ', instance.rangeSize);
-        dateReset(instance);
-      } else {
-        // console.log('diffInDaysAbs < instance.rangeSize -> ', diffInDays, ' < ', instance.rangeSize);
-        if (diffInDays > 0) {
-          instance.rangeStopDate = instance.dateSelected;
-        } else {
-          instance.rangeStartDate = instance.rangeStopDate;
-          instance.rangeStopDate = instance.dateSelected;
-        }
-        // console.log(instance.rangeStartDate, instance.rangeStopDate);
-
-        if (instance.rangeStopDate < instance.rangeStartDate) {
-          let tmp = instance.rangeStartDate;
-          instance.rangeStartDate = instance.rangeStopDate;
-          instance.rangeStopDate = tmp;
-          instance.rangeNowSelecting = 1;
-        }
-
-        // ???
-        diffInDays = dateDiffInDays(instance.rangeStartDate, instance.rangeStopDate);
-        diffInDaysAbs = Math.abs(diffInDays);
-        if (diffInDaysAbs >= instance.rangeSize ) {
-          dateReset(instance);
-        }
-      }
+      instance.rangeStartDate = instance.dateSelected;
+    } else if (instance.rangeNowSelecting == 1) {
+      instance.rangeStopDate = instance.dateSelected;
     }
 
     /*
